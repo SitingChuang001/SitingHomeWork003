@@ -1,13 +1,16 @@
 import { _decorator, Component, Node, UITransform, Vec3 } from 'cc';
 import { BallView } from './BallView';
+import { BlockState, BlockView } from './BlockView';
 const { ccclass, property } = _decorator;
 
 @ccclass('PipeView')
 export class PipeView extends Component {
     public queue: BallView[] = []
+    private enteringQueue: BallView[] = []
     public slots: Vec3[] = []
     @property({ type: Number })
     public maxSize: number = 3
+    public blocks: BlockView[] = []
     public get curState(): PipeState {
         if (this.queue.length < this.maxSize)
             return PipeState.Open
@@ -17,7 +20,10 @@ export class PipeView extends Component {
     public moveToNextPipe: (ball: BallView, pipe: PipeView) => {}
 
     public onLoad(): void {
-        this.node.children.forEach((element) => {
+        this.node.children.forEach((element, index) => {
+            const block = element.getComponent(BlockView)
+            block.init(this.moveToNextBlock.bind(this), index)
+            this.blocks.push(block)
             this.slots.push(element.worldPosition)
         })
     }
@@ -26,13 +32,26 @@ export class PipeView extends Component {
         this.moveToNextPipe = moveCb
     }
 
+    public moveToNextBlock(ball: BallView, id: number): Promise<void> {
+        return new Promise(async (resolve) => {
+            let index = id + 1
+            if (index < this.blocks.length) {
+                await this.waitAvailableNextBlock(this.blocks[index])
+                this.blocks[index].moveInBall(ball)
+                resolve()
+            } else {
+                this.queue.shift()
+                this.moveToNextPipe(ball, this)
+                resolve()
+            }
+        })
+    }
+
     public async tryEnter(ball: BallView) {
         this.queue.push(ball)
-        const slotIndex = this.queue.length - 1
-        await this.moveToPipeStartPos(ball)
-        await this.repositionQueue()
-        await this.moveOutFirstBall()
+        await this.moveToNextBlock(ball, -1)
     }
+
     private moveToPipeStartPos(ball: BallView): Promise<void> {
         return new Promise(async (resolve) => {
             const pos = new Vec3(this.node.worldPosition.x, this.node.worldPosition.y - (this.node.getComponent(UITransform).height / 2), 0)
@@ -40,37 +59,19 @@ export class PipeView extends Component {
             resolve()
         })
     }
-    private async moveOutFirstBall() {
-        const ball = this.queue.shift();
-        if (ball) {
-            await this.moveToNextPipe(ball, this)
-        }
-        await this.repositionQueue()
-    }
-    private async repositionQueue(): Promise<void> {
-        return new Promise((resolve) => {
-            this.queue.forEach(async (ball, index) => {
-                const targetSlot = this.slots[index]
-                await ball.moveTo(targetSlot)
-                if (index == this.queue.length - 1) {
-                    console.log("Sitting")
-                    resolve()
-                }
-            })
-        })
-    }
 
-    private waitUntilSlotAvailable(): Promise<void> {
+    public waitAvailableNextBlock(block: BlockView): Promise<void> {
         return new Promise((resolve) => {
             const check = () => {
-                if (this.queue.length < this.maxSize) {
+                if (block.curState === BlockState.Empty) {
                     resolve()
                 } else {
-                    setTimeout(check, 100)
+                    setTimeout(check, 10)
                 }
             }
             check()
         })
+
     }
 }
 
