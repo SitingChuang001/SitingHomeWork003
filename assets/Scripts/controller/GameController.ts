@@ -62,16 +62,14 @@ export class GameController extends Component {
                     nextPipe = this.pipeA
                     break
                 case this.pipeA:
-                    let test = Math.random()
-                    nextPipe = test > 0.5 ? this.pipeB1 : this.pipeB2
-                    console.log(test)
+                    nextPipe = Math.random() > 0.5 ? this.pipeB1 : this.pipeB2
                     break
                 case this.pipeB1:
                 case this.pipeB2:
                     nextPipe = this.pipeC
                     break
                 case this.pipeC:
-                    ball.moveTo(new Vec3(ball.node.position.x, this.node.getComponent(UITransform).height / 2, 0), this.reCycleBall.bind(this))
+                    ball.moveTo(new Vec3(ball.node.worldPosition.x, this.node.parent.getComponent(UITransform).height + 50, 0), this.reCycleBall.bind(this))
                     resolve()
                     return
             }
