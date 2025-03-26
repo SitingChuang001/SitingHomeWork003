@@ -1,5 +1,4 @@
-import { _decorator, Component, Label, Node, tween, Vec3 } from 'cc';
-import { PipeView } from './PipeView';
+import { _decorator, Component, Label, tween, Vec3 } from 'cc';
 const { ccclass, property } = _decorator;
 
 @ccclass('BallView')
@@ -11,14 +10,14 @@ export class BallView extends Component {
         this.numberLabel.string = `${num}`
     }
 
-    public async moveTo(pos: Vec3, cb?: (ball: BallView) => {}): Promise<void> {
+    public async moveTo(pos: Vec3, reCycleCb?: (ball: BallView) => {}): Promise<void> {
         return new Promise((resolve) => {
             tween(this.node)
                 .to(0.5, { worldPosition: pos }, { easing: 'smooth' })
                 .call(() => {
                     resolve()
-                    if (cb)
-                        cb(this)
+                    if (reCycleCb)
+                        reCycleCb(this)
                 })
                 .start()
         });

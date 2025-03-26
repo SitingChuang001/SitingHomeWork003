@@ -31,6 +31,10 @@ export class PipeView extends Component {
     public init(moveCb: (ball: BallView, pipe: PipeView) => {}) {
         this.moveToNextPipe = moveCb
     }
+    public async tryEnter(ball: BallView) {
+        this.queue.push(ball)
+        await this.moveToNextBlock(ball, -1)
+    }
 
     public moveToNextBlock(ball: BallView, id: number): Promise<void> {
         return new Promise(async (resolve) => {
@@ -44,19 +48,6 @@ export class PipeView extends Component {
                 this.moveToNextPipe(ball, this)
                 resolve()
             }
-        })
-    }
-
-    public async tryEnter(ball: BallView) {
-        this.queue.push(ball)
-        await this.moveToNextBlock(ball, -1)
-    }
-
-    private moveToPipeStartPos(ball: BallView): Promise<void> {
-        return new Promise(async (resolve) => {
-            const pos = new Vec3(this.node.worldPosition.x, this.node.worldPosition.y - (this.node.getComponent(UITransform).height / 2), 0)
-            await ball.moveTo(pos)
-            resolve()
         })
     }
 

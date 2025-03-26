@@ -47,15 +47,14 @@ export class GameController extends Component {
         )
         ballNode.setPosition(randomPos)
         this.node.addChild(ballNode)
-        await this.goNextPipe(ball, null)
+        this.goNextPipe(ball, null)
     }
 
     private reCycleBall(ball: BallView) {
         this.ballPool.put(ball.node)
     }
 
-    public goNextPipe(ball: BallView, curPipe: PipeView): Promise<void> {
-        return new Promise(async (resolve) => {
+    public async goNextPipe(ball: BallView, curPipe: PipeView){
             let nextPipe: PipeView = null
             switch (curPipe) {
                 case null:
@@ -70,12 +69,10 @@ export class GameController extends Component {
                     break
                 case this.pipeC:
                     ball.moveTo(new Vec3(ball.node.worldPosition.x, this.node.parent.getComponent(UITransform).height + 50, 0), this.reCycleBall.bind(this))
-                    resolve()
                     return
             }
             await this.waitAvailableNextPipe(nextPipe)
             nextPipe.tryEnter(ball)
-        })
     }
 
     public waitAvailableNextPipe(nextPipe: PipeView): Promise<void> {

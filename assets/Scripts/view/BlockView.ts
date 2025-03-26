@@ -1,6 +1,6 @@
-import { _decorator, Component, Node } from 'cc';
+import { _decorator, Component } from 'cc';
 import { BallView } from './BallView';
-const { ccclass, property } = _decorator;
+const { ccclass } = _decorator;
 
 @ccclass('BlockView')
 export class BlockView extends Component {
@@ -11,9 +11,7 @@ export class BlockView extends Component {
         return this.ballContent === null ? BlockState.Empty : BlockState.Full
     }
     public moveToNextBlock: (ball: BallView, id: number) => Promise<void> = async () => { }
-    protected onLoad(): void {
 
-    }
     public init(moveCb: (ball: BallView, id: number) => Promise<void>, id: number) {
         this.moveToNextBlock = moveCb
         this.blockId = id
