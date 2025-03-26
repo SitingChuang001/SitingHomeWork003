@@ -14,7 +14,7 @@ export class BallView extends Component {
     public async moveTo(pos: Vec3, cb?: (ball: BallView) => {}): Promise<void> {
         return new Promise((resolve) => {
             tween(this.node)
-                .to(1, { worldPosition: pos }, { easing: 'quadOut' })
+                .to(0.5, { worldPosition: pos }, { easing: 'smooth' })
                 .call(() => {
                     resolve()
                     if (cb)
