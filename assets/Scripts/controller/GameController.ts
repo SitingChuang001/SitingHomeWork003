@@ -1,6 +1,6 @@
-import { _decorator, Component, instantiate, Node, NodePool, Prefab, randomRange, randomRangeInt, UITransform, Vec3 } from 'cc';
+import { _decorator, Component, instantiate, Node, NodePool, PhysicsSystem2D, Prefab, randomRange, randomRangeInt, UITransform, Vec3 } from 'cc';
 import { PipeState, PipeView } from '../view/PipeView';
-import { BallView } from '../view/BallView';
+import { BallState, BallView } from '../view/BallView';
 const { ccclass, property } = _decorator;
 
 @ccclass('GameController')
@@ -17,17 +17,16 @@ export class GameController extends Component {
     @property(PipeView)
     private pipeC: PipeView = null
 
+    @property(Node)
+    private endNode: Node = null
+
+    private ballQueue: BallView[] = []
     private ballPool: NodePool = new NodePool
+    private endPos: Vec3 = new Vec3
 
     onLoad() {
-        this.initializePipes()
-    }
-
-    private initializePipes() {
-        this.pipeA.init(this.goNextPipe.bind(this))
-        this.pipeB1.init(this.goNextPipe.bind(this))
-        this.pipeB2.init(this.goNextPipe.bind(this))
-        this.pipeC.init(this.goNextPipe.bind(this))
+        PhysicsSystem2D.instance.enable = true
+        this.endPos = this.endNode.getWorldPosition()
     }
 
     public async spawnBall() {
@@ -47,46 +46,74 @@ export class GameController extends Component {
         )
         ballNode.setPosition(randomPos)
         this.node.addChild(ballNode)
-        this.goNextPipe(ball, null)
+        this.ballQueue.push(ball)
     }
 
     private reCycleBall(ball: BallView) {
         this.ballPool.put(ball.node)
     }
 
-    public async goNextPipe(ball: BallView, curPipe: PipeView){
-            let nextPipe: PipeView = null
-            switch (curPipe) {
-                case null:
-                    nextPipe = this.pipeA
+    protected update(dt: number): void {
+        const toRemove: BallView[] = []
+        this.ballQueue.forEach((ball) => {
+            switch (ball.curState) {
+                case BallState.WAITING:
+                    const curPipe = ball.curPipe
+                    let nextPipe: PipeView
+                    let pos: Vec3
+                    let ballState: BallState
+                    let ballNextState: BallState
+                    if (curPipe === null) {
+                        if (this.pipeA.curState === PipeState.Open) {
+                            nextPipe = this.pipeA
+                            this.pipeA.ballCount++
+                            ball.moveTo(this.pipeA.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
+                        }
+                    }
+                    if (curPipe === this.pipeA) {
+                        if (this.pipeB1.curState === PipeState.Open) {
+                            nextPipe = this.pipeB1
+                            this.pipeB1.ballCount++
+                            this.pipeA.ballCount--
+                            ball.moveTo(this.pipeB1.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
+                        }
+                        else if (this.pipeB2.curState === PipeState.Open) {
+                            nextPipe = this.pipeB2
+                            this.pipeB2.ballCount++
+                            this.pipeA.ballCount--
+                            ball.moveTo(this.pipeB2.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
+                        }
+                    }
+                    else if (curPipe === this.pipeB1 || curPipe === this.pipeB2) {
+                        if (this.pipeC.curState === PipeState.Open) {
+                            nextPipe = this.pipeC
+                            this.pipeC.ballCount++
+                            curPipe.ballCount --
+                            ball.moveTo(this.pipeC.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
+                        }
+                    } else if (curPipe === this.pipeC) {
+                        nextPipe = null
+                        curPipe.ballCount--
+                        ball.moveTo(this.endPos, BallState.MOVE_INTO_END, BallState.END, nextPipe)
+                    } // 原有的pipe要減1，新的pipe的queue要加1 並更改球的curPipe
+                    // curPipe.queue-1
+                    // nextPipe?.queue-1
+                    // ball.moveTo(pos, ballState, ballNextState, nextPipe)
                     break
-                case this.pipeA:
-                    nextPipe = Math.random() > 0.5 ? this.pipeB1 : this.pipeB2
+                case BallState.MOVE_INTO_PIPE_COMPLETE:
+                    ball.moveTo(ball.curPipe.endPos, BallState.MOVE_ON_PIPE, BallState.WAITING, ball.curPipe)
                     break
-                case this.pipeB1:
-                case this.pipeB2:
-                    nextPipe = this.pipeC
+                case BallState.MOVE_INTO_PIPE:
+                case BallState.MOVE_INTO_END:
+                case BallState.MOVE_ON_PIPE:
                     break
-                case this.pipeC:
-                    ball.moveTo(new Vec3(ball.node.worldPosition.x, this.node.parent.getComponent(UITransform).height + 50, 0), this.reCycleBall.bind(this))
-                    return
+                case BallState.END:
+                    this.reCycleBall(ball)
+                    toRemove.push(ball)
+                    break
             }
-            await this.waitAvailableNextPipe(nextPipe)
-            nextPipe.tryEnter(ball)
-    }
-
-    public waitAvailableNextPipe(nextPipe: PipeView): Promise<void> {
-        return new Promise((resolve) => {
-            const check = () => {
-                if (nextPipe.curState == PipeState.Open) {
-                    resolve()
-                } else {
-                    setTimeout(check, 10)
-                }
-            }
-            check()
         })
-
+        this.ballQueue = this.ballQueue.filter(ball => !toRemove.includes(ball))
     }
 }
 

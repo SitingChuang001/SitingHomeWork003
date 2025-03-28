@@ -5,64 +5,29 @@ const { ccclass, property } = _decorator;
 
 @ccclass('PipeView')
 export class PipeView extends Component {
-    public queue: BallView[] = []
-    private enteringQueue: BallView[] = []
-    public slots: Vec3[] = []
     @property({ type: Number })
     public maxSize: number = 3
-    public blocks: BlockView[] = []
-    public get curState(): PipeState {
-        if (this.queue.length < this.maxSize)
-            return PipeState.Open
+
+    public queue: BallView[] = []
+    public curState: PipeState
+    public startPos: Vec3
+    public endPos: Vec3
+    public ballCount:number = 0
+
+    protected onLoad(): void {
+        const pos = this.node.worldPosition
+        const height = this.node.getComponent(UITransform).height
+        this.startPos = new Vec3(pos.x, pos.y - height / 2, pos.z)
+        this.endPos = new Vec3(pos.x, pos.y + height / 2, pos.z)
+    }
+
+
+
+    protected update(dt: number): void {
+        if (this.ballCount < this.maxSize)
+            this.curState = PipeState.Open
         else
-            return PipeState.Close
-    }
-    public moveToNextPipe: (ball: BallView, pipe: PipeView) => {}
-
-    public onLoad(): void {
-        this.node.children.forEach((element, index) => {
-            const block = element.getComponent(BlockView)
-            block.init(this.moveToNextBlock.bind(this), index)
-            this.blocks.push(block)
-            this.slots.push(element.worldPosition)
-        })
-    }
-
-    public init(moveCb: (ball: BallView, pipe: PipeView) => {}) {
-        this.moveToNextPipe = moveCb
-    }
-    public async tryEnter(ball: BallView) {
-        this.queue.push(ball)
-        await this.moveToNextBlock(ball, -1)
-    }
-
-    public moveToNextBlock(ball: BallView, id: number): Promise<void> {
-        return new Promise(async (resolve) => {
-            let index = id + 1
-            if (index < this.blocks.length) {
-                await this.waitAvailableNextBlock(this.blocks[index])
-                this.blocks[index].moveInBall(ball)
-                resolve()
-            } else {
-                this.queue.shift()
-                this.moveToNextPipe(ball, this)
-                resolve()
-            }
-        })
-    }
-
-    public waitAvailableNextBlock(block: BlockView): Promise<void> {
-        return new Promise((resolve) => {
-            const check = () => {
-                if (block.curState === BlockState.Empty) {
-                    resolve()
-                } else {
-                    setTimeout(check, 10)
-                }
-            }
-            check()
-        })
-
+            this.curState = PipeState.Close
     }
 }
 

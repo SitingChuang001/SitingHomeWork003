@@ -22,7 +22,7 @@ export class BlockView extends Component {
     }
     public async moveInBall(ball: BallView) {
         this.ballContent = ball
-        await ball.moveTo(this.node.worldPosition)
+        // await ball.moveTo(this.node.worldPosition)
         this.moveOutBall(ball)
     }
 }
