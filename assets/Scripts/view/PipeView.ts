@@ -9,26 +9,22 @@ export class PipeView extends Component {
     public maxSize: number = 3
 
     public queue: BallView[] = []
-    public curState: PipeState
+    public get curState(): PipeState{
+        return this.ballCount<this.maxSize? PipeState.Open:PipeState.Close
+    }
     public startPos: Vec3
     public endPos: Vec3
     public ballCount:number = 0
 
+
     protected onLoad(): void {
         const pos = this.node.worldPosition
         const height = this.node.getComponent(UITransform).height
-        this.startPos = new Vec3(pos.x, pos.y - height / 2, pos.z)
+        this.startPos = new Vec3(pos.x, pos.y -    height / 2, pos.z)
         this.endPos = new Vec3(pos.x, pos.y + height / 2, pos.z)
     }
 
 
-
-    protected update(dt: number): void {
-        if (this.ballCount < this.maxSize)
-            this.curState = PipeState.Open
-        else
-            this.curState = PipeState.Close
-    }
 }
 
 export enum PipeState {

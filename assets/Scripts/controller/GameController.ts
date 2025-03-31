@@ -25,7 +25,6 @@ export class GameController extends Component {
     private endPos: Vec3 = new Vec3
 
     onLoad() {
-        PhysicsSystem2D.instance.enable = true
         this.endPos = this.endNode.getWorldPosition()
     }
 
@@ -60,28 +59,25 @@ export class GameController extends Component {
                 case BallState.WAITING:
                     const curPipe = ball.curPipe
                     let nextPipe: PipeView
-                    let pos: Vec3
-                    let ballState: BallState
-                    let ballNextState: BallState
                     if (curPipe === null) {
                         if (this.pipeA.curState === PipeState.Open) {
                             nextPipe = this.pipeA
                             this.pipeA.ballCount++
-                            ball.moveTo(this.pipeA.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
+                            ball.moveToNewState(this.pipeA.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
                         }
                     }
                     if (curPipe === this.pipeA) {
                         if (this.pipeB1.curState === PipeState.Open) {
                             nextPipe = this.pipeB1
                             this.pipeB1.ballCount++
-                            this.pipeA.ballCount--
-                            ball.moveTo(this.pipeB1.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
+                            curPipe.ballCount--
+                            ball.moveToNewState(this.pipeB1.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
                         }
                         else if (this.pipeB2.curState === PipeState.Open) {
                             nextPipe = this.pipeB2
                             this.pipeB2.ballCount++
-                            this.pipeA.ballCount--
-                            ball.moveTo(this.pipeB2.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
+                            curPipe.ballCount--
+                            ball.moveToNewState(this.pipeB2.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
                         }
                     }
                     else if (curPipe === this.pipeB1 || curPipe === this.pipeB2) {
@@ -89,19 +85,16 @@ export class GameController extends Component {
                             nextPipe = this.pipeC
                             this.pipeC.ballCount++
                             curPipe.ballCount --
-                            ball.moveTo(this.pipeC.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
+                            ball.moveToNewState(this.pipeC.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
                         }
                     } else if (curPipe === this.pipeC) {
                         nextPipe = null
                         curPipe.ballCount--
-                        ball.moveTo(this.endPos, BallState.MOVE_INTO_END, BallState.END, nextPipe)
-                    } // 原有的pipe要減1，新的pipe的queue要加1 並更改球的curPipe
-                    // curPipe.queue-1
-                    // nextPipe?.queue-1
-                    // ball.moveTo(pos, ballState, ballNextState, nextPipe)
+                        ball.moveToNewState(this.endPos, BallState.MOVE_INTO_END, BallState.END, nextPipe)
+                    }
                     break
                 case BallState.MOVE_INTO_PIPE_COMPLETE:
-                    ball.moveTo(ball.curPipe.endPos, BallState.MOVE_ON_PIPE, BallState.WAITING, ball.curPipe)
+                    ball.moveToNewState(ball.curPipe.endPos, BallState.MOVE_ON_PIPE, BallState.WAITING, ball.curPipe)
                     break
                 case BallState.MOVE_INTO_PIPE:
                 case BallState.MOVE_INTO_END:

@@ -1,4 +1,4 @@
-import { _decorator, BoxCollider2D, Component, Contact2DType, Label, Vec3 } from 'cc';
+import { _decorator, CircleCollider2D, Component, Contact2DType, Label, Vec3 } from 'cc';
 import { PipeView } from './PipeView';
 const { ccclass, property } = _decorator;
 
@@ -6,8 +6,6 @@ const { ccclass, property } = _decorator;
 export class BallView extends Component {
     @property(Label)
     private numberLabel: Label
-    @property(BoxCollider2D)
-    public collider: BoxCollider2D = null
     @property
     public defaultSpeed: number = 300
 
@@ -20,17 +18,13 @@ export class BallView extends Component {
 
     protected onLoad(): void {
         this.curSpeed = this.defaultSpeed
-        if (this.collider) {
-            this.collider.on(Contact2DType.BEGIN_CONTACT, () => { this.curSpeed = 0 }, this)
-            this.collider.on(Contact2DType.END_CONTACT, () => { this.curSpeed = this.defaultSpeed }, this)
-        }
     }
     public init(num: number) {
         this.numberLabel.string = `${num}`
         this.curState = BallState.WAITING
     }
 
-    public moveTo(pos: Vec3, state: BallState, nextState: BallState, pipe?: PipeView) {
+    public moveToNewState(pos: Vec3, state: BallState, nextState: BallState, pipe?: PipeView) {
         this.targetPos = pos
         this.curState = state
         this.curPipe = pipe

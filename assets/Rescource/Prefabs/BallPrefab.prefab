@@ -407,6 +407,10 @@
     "numberLabel": {
       "__id__": 11
     },
+    "collider": {
+      "__id__": 18
+    },
+    "defaultSpeed": 300,
     "_id": ""
   },
   {
