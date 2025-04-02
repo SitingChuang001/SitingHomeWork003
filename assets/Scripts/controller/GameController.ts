@@ -1,4 +1,4 @@
-import { _decorator, Component, instantiate, Node, NodePool, PhysicsSystem2D, Prefab, randomRange, randomRangeInt, UITransform, Vec3 } from 'cc';
+import { _decorator, Collider, Component, instantiate, Node, NodePool, PhysicsSystem2D, Prefab, randomRange, randomRangeInt, tween, UITransform, Vec3 } from 'cc';
 import { PipeState, PipeView } from '../view/PipeView';
 import { BallState, BallView } from '../view/BallView';
 const { ccclass, property } = _decorator;
@@ -23,9 +23,11 @@ export class GameController extends Component {
     private ballQueue: BallView[] = []
     private ballPool: NodePool = new NodePool
     private endPos: Vec3 = new Vec3
+    private ballNum: number = 1
 
     onLoad() {
         this.endPos = this.endNode.getWorldPosition()
+        PhysicsSystem2D.instance.enable = true
     }
 
     public async spawnBall() {
@@ -36,7 +38,7 @@ export class GameController extends Component {
             ballNode = instantiate(this.ballPrefab)
         }
         const ball = ballNode.getComponent(BallView)
-        ball.init(randomRangeInt(1, 20))
+        ball.init(this.ballNum++)
 
         const randomPos = new Vec3(
             randomRange(230, 530),
@@ -61,44 +63,90 @@ export class GameController extends Component {
                     let nextPipe: PipeView
                     if (curPipe === null) {
                         if (this.pipeA.curState === PipeState.Open) {
-                            nextPipe = this.pipeA
+                            ball.setState(BallState.POOL_TO_PIPE_MOVING)
+                            ball.setPipe(this.pipeA)
+                            ball.setTargetPos(this.pipeA.startPos)
                             this.pipeA.ballCount++
-                            ball.moveToNewState(this.pipeA.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
+                            tween(ball.node)
+                                .to(1, { worldPosition: ball.targetPos }, { easing: "linear" })
+                                .start()//初次進管子，避免順序亂掉，不用定速改用秒數
                         }
                     }
                     if (curPipe === this.pipeA) {
                         if (this.pipeB1.curState === PipeState.Open) {
-                            nextPipe = this.pipeB1
+                            ball.setState(BallState.PIPE_TO_PIPE_MOVING)
+                            ball.setPipe(this.pipeB1)
+                            ball.setTargetPos(this.pipeB1.startPos)
                             this.pipeB1.ballCount++
                             curPipe.ballCount--
-                            ball.moveToNewState(this.pipeB1.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
                         }
                         else if (this.pipeB2.curState === PipeState.Open) {
-                            nextPipe = this.pipeB2
-                            this.pipeB2.ballCount++
+                            ball.setState(BallState.PIPE_TO_PIPE_MOVING)
+                            ball.setPipe(this.pipeB2)
+                            ball.setTargetPos(this.pipeB2.startPos)
                             curPipe.ballCount--
-                            ball.moveToNewState(this.pipeB2.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
                         }
                     }
                     else if (curPipe === this.pipeB1 || curPipe === this.pipeB2) {
                         if (this.pipeC.curState === PipeState.Open) {
-                            nextPipe = this.pipeC
+                            ball.setState(BallState.PIPE_TO_PIPE_MOVING)
+                            ball.setPipe(this.pipeC)
+                            ball.setTargetPos(this.pipeC.startPos)
                             this.pipeC.ballCount++
-                            curPipe.ballCount --
-                            ball.moveToNewState(this.pipeC.startPos, BallState.MOVE_INTO_PIPE, BallState.MOVE_INTO_PIPE_COMPLETE, nextPipe)
+                            curPipe.ballCount--
                         }
                     } else if (curPipe === this.pipeC) {
-                        nextPipe = null
+                        ball.setState(BallState.PIPE_TO_END_MOVING)
+                        ball.setPipe(null)
+                        ball.setTargetPos(this.endPos)
                         curPipe.ballCount--
-                        ball.moveToNewState(this.endPos, BallState.MOVE_INTO_END, BallState.END, nextPipe)
                     }
                     break
-                case BallState.MOVE_INTO_PIPE_COMPLETE:
-                    ball.moveToNewState(ball.curPipe.endPos, BallState.MOVE_ON_PIPE, BallState.WAITING, ball.curPipe)
+                case BallState.ON_PIPE_START:
+                    if (ball.curPipe.moveApprove) {
+                        ball.setState(BallState.MOVE_ON_PIPE)
+                        ball.setTargetPos(ball.curPipe.endPos)
+                        ball.moveToNewState(ball.curPipe.endPos, BallState.MOVE_ON_PIPE, BallState.WAITING, ball.curPipe)
+                        ball.curPipe.setMoveApprove(false)
+                    }//判斷前一顆球會不會和自己重疊
                     break
-                case BallState.MOVE_INTO_PIPE:
-                case BallState.MOVE_INTO_END:
+                case BallState.POOL_TO_PIPE_MOVING:
+                    const dirss = new Vec3()
+                    Vec3.subtract(dirss, ball.targetPos, ball.node.worldPosition)
+                    const distancess = Vec3.len(dirss)
+                    if (distancess < 3) {
+                        ball.setState(BallState.ON_PIPE_START)
+                    }  
+                    break
+                case BallState.PIPE_TO_END_MOVING:
+                case BallState.PIPE_TO_PIPE_MOVING:
                 case BallState.MOVE_ON_PIPE:
+                    if (!ball.targetPos || ball.curSpeed <= 0)
+                        return
+
+                    const currentPos = ball.node.worldPosition
+                    const dir = new Vec3()
+                    Vec3.subtract(dir, ball.targetPos, currentPos)
+                    const distance = Vec3.len(dir)
+
+                    const reachThreshold = 3
+
+                    if (distance < reachThreshold) {
+                        ball.node.setWorldPosition(ball.targetPos)
+                        ball.targetPos = null
+                        if(ball.curState === BallState.MOVE_ON_PIPE){
+                            ball.setState(BallState.WAITING)
+                        }else if (ball.curState === BallState.PIPE_TO_PIPE_MOVING) {
+                            ball.setState(BallState.ON_PIPE_START)
+                        }else if (ball.curState === BallState.PIPE_TO_END_MOVING) {
+                            ball.setState(BallState.END)
+                        }
+                        return
+                    }
+
+                    Vec3.normalize(dir, dir)
+                    const moveDelta = Vec3.multiplyScalar(new Vec3(), dir, ball.curSpeed * dt)
+                    ball.node.setWorldPosition(Vec3.add(new Vec3(), currentPos, moveDelta))
                     break
                 case BallState.END:
                     this.reCycleBall(ball)
