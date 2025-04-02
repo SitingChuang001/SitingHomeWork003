@@ -26,7 +26,7 @@ export class GameController extends Component {
     private ballNum: number = 1
 
     onLoad() {
-        this.endPos = this.endNode.getWorldPosition()
+        this.endPos = this.endNode.getPosition()
         PhysicsSystem2D.instance.enable = true
     }
 
@@ -39,6 +39,7 @@ export class GameController extends Component {
         }
         const ball = ballNode.getComponent(BallView)
         ball.init(this.ballNum++)
+        ball.setState(BallState.WAITING)
 
         const randomPos = new Vec3(
             randomRange(230, 530),
@@ -68,7 +69,7 @@ export class GameController extends Component {
                             ball.setTargetPos(this.pipeA.startPos)
                             this.pipeA.ballCount++
                             tween(ball.node)
-                                .to(1, { worldPosition: ball.targetPos }, { easing: "linear" })
+                                .to(1, { position: ball.targetPos }, { easing: "linear" })
                                 .start()//初次進管子，避免順序亂掉，不用定速改用秒數
                         }
                     }
@@ -106,13 +107,12 @@ export class GameController extends Component {
                     if (ball.curPipe.moveApprove) {
                         ball.setState(BallState.MOVE_ON_PIPE)
                         ball.setTargetPos(ball.curPipe.endPos)
-                        ball.moveToNewState(ball.curPipe.endPos, BallState.MOVE_ON_PIPE, BallState.WAITING, ball.curPipe)
                         ball.curPipe.setMoveApprove(false)
                     }//判斷前一顆球會不會和自己重疊
                     break
                 case BallState.POOL_TO_PIPE_MOVING:
                     const dirss = new Vec3()
-                    Vec3.subtract(dirss, ball.targetPos, ball.node.worldPosition)
+                    Vec3.subtract(dirss, ball.targetPos, ball.node.position)
                     const distancess = Vec3.len(dirss)
                     if (distancess < 3) {
                         ball.setState(BallState.ON_PIPE_START)
@@ -124,7 +124,7 @@ export class GameController extends Component {
                     if (!ball.targetPos || ball.curSpeed <= 0)
                         return
 
-                    const currentPos = ball.node.worldPosition
+                    const currentPos = ball.node.position
                     const dir = new Vec3()
                     Vec3.subtract(dir, ball.targetPos, currentPos)
                     const distance = Vec3.len(dir)
@@ -132,7 +132,7 @@ export class GameController extends Component {
                     const reachThreshold = 3
 
                     if (distance < reachThreshold) {
-                        ball.node.setWorldPosition(ball.targetPos)
+                        ball.node.setPosition(ball.targetPos)
                         ball.targetPos = null
                         if(ball.curState === BallState.MOVE_ON_PIPE){
                             ball.setState(BallState.WAITING)
@@ -146,7 +146,7 @@ export class GameController extends Component {
 
                     Vec3.normalize(dir, dir)
                     const moveDelta = Vec3.multiplyScalar(new Vec3(), dir, ball.curSpeed * dt)
-                    ball.node.setWorldPosition(Vec3.add(new Vec3(), currentPos, moveDelta))
+                    ball.node.setPosition(Vec3.add(new Vec3(), currentPos, moveDelta))
                     break
                 case BallState.END:
                     this.reCycleBall(ball)

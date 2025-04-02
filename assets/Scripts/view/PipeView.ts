@@ -20,7 +20,7 @@ export class PipeView extends Component {
     private _moveApprove: boolean = true
 
     protected onLoad(): void {
-        const pos = this.node.worldPosition
+        const pos = this.node.getPosition()
         const height = this.node.getComponent(UITransform).height
         this.startPos = new Vec3(pos.x, pos.y -    height / 2, pos.z)
         this.endPos = new Vec3(pos.x, pos.y + height / 2, pos.z)
